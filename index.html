@@ -300,7 +300,7 @@
   </div>
 
   <p class="refresh-note">
-    Auto-refreshes every 30s ·
+    Auto-refreshes every 5 min ·
     <a href="https://app.safe.global/base:0x26B7805Dd8aEc26DA55fc8e0c659cf6822b740Be" target="_blank">View on Safe</a> ·
     <a href="https://basescan.org/address/0x26B7805Dd8aEc26DA55fc8e0c659cf6822b740Be" target="_blank">Basescan</a>
   </p>
@@ -478,7 +478,7 @@ document.querySelectorAll('.filter-btn').forEach(btn => {
 
 // ── Init + auto-refresh ───────────────────────────────────────────────────────
 fetchData();
-setInterval(fetchData, 30000);
+setInterval(fetchData, 300000);
 </script>
 </body>
 </html>
