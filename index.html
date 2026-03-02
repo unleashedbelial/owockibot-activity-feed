@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Owockibot Activity Feed</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --gold: #f4c542;
+    --gold-dim: #f4c54233;
+    --bg: #080c10;
+    --bg2: #0d1219;
+    --bg3: #111822;
+    --border: #1a2535;
+    --text: #c8d0da;
+    --muted: #4a5568;
+    --green: #34d399;
+    --green-bg: #0a2018;
+    --blue: #60a5fa;
+    --blue-bg: #0a1628;
+    --purple: #a78bfa;
+    --purple-bg: #12102a;
+    --orange: #fb923c;
+    --orange-bg: #1a1008;
+    --red: #f87171;
+    --red-bg: #1a0a0a;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 32px; height: 32px;
+    background: var(--gold);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 17px; font-weight: 600; color: #fff; }
+  header p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+  .live-badge {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--green);
+    background: var(--green-bg);
+    border: 1px solid #14532d;
+    padding: 4px 10px; border-radius: 20px;
+  }
+  .pulse {
+    width: 7px; height: 7px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.8); }
+  }
+
+  /* ── Stats bar ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  .stat {
+    padding: 14px 20px;
+    border-right: 1px solid var(--border);
+  }
+  .stat:last-child { border-right: none; }
+  .stat .val { font-size: 22px; font-weight: 700; color: var(--gold); }
+  .stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── Main layout ── */
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 24px 20px;
+  }
+
+  /* ── Filters ── */
+  .filters {
+    display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .filter-btn.active { background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; }
+
+  /* ── Timeline ── */
+  .timeline { position: relative; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .event {
+    display: flex; gap: 16px;
+    margin-bottom: 12px;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .event-icon {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+  .icon-payout  { background: var(--green-bg); border: 1px solid #14532d; }
+  .icon-receive { background: var(--blue-bg); border: 1px solid #1e3a5f; }
+  .icon-fee     { background: var(--purple-bg); border: 1px solid #2d1b69; }
+  .icon-swap    { background: var(--orange-bg); border: 1px solid #7c2d12; }
+  .icon-other   { background: var(--bg3); border: 1px solid var(--border); }
+
+  .event-body {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    transition: border-color 0.15s;
+  }
+  .event-body:hover { border-color: #2a3a52; }
+
+  .event-top {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-bottom: 6px;
+  }
+  .event-type {
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .type-payout  { color: var(--green); }
+  .type-receive { color: var(--blue); }
+  .type-fee     { color: var(--purple); }
+  .type-swap    { color: var(--orange); }
+  .type-other   { color: var(--muted); }
+
+  .event-time {
+    font-size: 11px; color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .event-amount {
+    font-size: 16px; font-weight: 700; color: #fff;
+    margin-bottom: 6px;
+  }
+  .event-amount .token-sym { color: var(--gold); font-size: 13px; margin-left: 4px; }
+
+  .event-meta {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .addr-chip {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 4px;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .addr-chip span { color: #667; font-size: 10px; }
+  .tx-link {
+    font-size: 11px;
+    color: var(--gold);
+    text-decoration: none;
+    opacity: 0.7;
+  }
+  .tx-link:hover { opacity: 1; }
+
+  /* ── Token badge ── */
+  .token-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px; color: var(--text);
+  }
+  .token-badge img { width: 12px; height: 12px; border-radius: 50%; }
+
+  /* ── Loading / empty ── */
+  .loader {
+    text-align: center; padding: 60px 20px; color: var(--muted);
+  }
+  .loader .spin {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .refresh-note {
+    text-align: center;
+    font-size: 12px; color: var(--muted);
+    margin-top: 24px;
+  }
+  .refresh-note a { color: var(--gold); text-decoration: none; }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .stat { padding: 12px 14px; }
+    header { padding: 12px 16px; }
+    main { padding: 16px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="logo">🌊</div>
+    <div>
+      <h1>Owockibot Activity Feed</h1>
+      <p>Safe: 0x26B7805D...40Be · Base</p>
+    </div>
+  </div>
+  <div class="live-badge">
+    <div class="pulse"></div>
+    Live
+  </div>
+</header>
+
+<div class="stats-bar">
+  <div class="stat">
+    <div class="val" id="stat-total">—</div>
+    <div class="lbl">Total Events</div>
+  </div>
+  <div class="stat">
+    <div class="val" id="stat-payouts">—</div>
+    <div class="lbl">USDC Paid Out</div>
+  </div>
+  <div class="stat">
+    <div class="val" id="stat-fees">—</div>
+    <div class="lbl">WETH Received</div>
+  </div>
+  <div class="stat">
+    <div class="val" id="stat-refresh">—</div>
+    <div class="lbl">Last Refresh</div>
+  </div>
+</div>
+
+<main>
+  <div class="filters">
+    <button class="filter-btn active" data-filter="all">All</button>
+    <button class="filter-btn" data-filter="payout">💸 Payouts</button>
+    <button class="filter-btn" data-filter="receive">📥 Revenue</button>
+    <button class="filter-btn" data-filter="fee">⚡ Fee Claims</button>
+    <button class="filter-btn" data-filter="swap">🔄 Swaps</button>
+  </div>
+
+  <div class="timeline" id="feed">
+    <div class="loader">
+      <div class="spin"></div>
+      Loading activity…
+    </div>
+  </div>
+
+  <p class="refresh-note">
+    Auto-refreshes every 30s ·
+    <a href="https://app.safe.global/base:0x26B7805Dd8aEc26DA55fc8e0c659cf6822b740Be" target="_blank">View on Safe</a> ·
+    <a href="https://basescan.org/address/0x26B7805Dd8aEc26DA55fc8e0c659cf6822b740Be" target="_blank">Basescan</a>
+  </p>
+</main>
+
+<script>
+const SAFE = '0x26B7805Dd8aEc26DA55fc8e0c659cf6822b740Be';
+const API  = `https://safe-transaction-base.safe.global/api/v1/safes/${SAFE}`;
+const BASESCAN = 'https://basescan.org/tx/';
+
+// Known addresses
+const LABELS = {
+  '0x26b7805dd8aec26da55fc8e0c659cf6822b740be': 'owockibot Safe',
+  '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913': 'USDC',
+  '0x4200000000000000000000000000000000000006': 'WETH',
+  '0xfdc933ff4e2980d18becf48e4e030d8463a2bb07': '$owockibot token',
+  '0xf3622742b1e446d92e45e22923ef11c2fcd55d68': 'Fee Splitter',
+  '0x63d2dfea64b3433f4071a98665bcd7ca14d93496': 'LP Locker',
+};
+
+let allEvents = [];
+let currentFilter = 'all';
+
+// ── Classify event ────────────────────────────────────────────────────────────
+function classify(tx) {
+  const safeL = SAFE.toLowerCase();
+  const fromL = (tx.from || '').toLowerCase();
+  const toL   = (tx.to || '').toLowerCase();
+  const sym   = tx.tokenInfo?.symbol || '';
+
+  // Fee claim (WETH from Fee Splitter into Safe)
+  if (toL === safeL && fromL === '0xf3622742b1e446d92e45e22923ef11c2fcd55d68') {
+    return 'fee';
+  }
+  // Bounty payout (USDC out from Safe)
+  if (fromL === safeL && sym === 'USDC') {
+    return 'payout';
+  }
+  // Incoming (to Safe)
+  if (toL === safeL) {
+    return 'receive';
+  }
+  // Outgoing non-USDC
+  if (fromL === safeL) {
+    return 'swap';
+  }
+  return 'other';
+}
+
+// ── Format value ──────────────────────────────────────────────────────────────
+function formatVal(value, decimals, symbol) {
+  const n = parseFloat(value) / Math.pow(10, decimals || 18);
+  if (n === 0) return '0';
+  if (n >= 1000000) return (n / 1000000).toFixed(2) + 'M';
+  if (n >= 1000)    return (n / 1000).toFixed(2) + 'K';
+  if (n < 0.0001)   return n.toExponential(2);
+  return n.toLocaleString(undefined, { maximumFractionDigits: 4 });
+}
+
+// ── Relative time ─────────────────────────────────────────────────────────────
+function relTime(iso) {
+  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (diff < 60)   return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+// ── Short address ─────────────────────────────────────────────────────────────
+function shortAddr(addr) {
+  if (!addr) return '—';
+  const l = addr.toLowerCase();
+  if (LABELS[l]) return LABELS[l];
+  return addr.slice(0, 6) + '…' + addr.slice(-4);
+}
+
+// ── Render event card ─────────────────────────────────────────────────────────
+function renderEvent(tx) {
+  const kind = tx._kind;
+  const sym  = tx.tokenInfo?.symbol || 'ETH';
+  const dec  = tx.tokenInfo?.decimals || 18;
+  const logo = tx.tokenInfo?.logoUri || '';
+  const val  = formatVal(tx.value, dec, sym);
+  const hash = tx.transactionHash || '';
+  const date = tx.executionDate || tx.submissionDate || '';
+
+  const icons = { payout:'💸', receive:'📥', fee:'⚡', swap:'🔄', other:'📋' };
+  const labels = { payout:'Bounty Payout', receive:'Incoming Transfer', fee:'Fee Revenue', swap:'Outgoing Transfer', other:'Transaction' };
+
+  const counterparty = kind === 'payout' || kind === 'swap'
+    ? tx.to : tx.from;
+
+  const chipLabel = kind === 'payout' ? '→' : kind === 'receive' || kind === 'fee' ? '←' : '↔';
+
+  return `
+    <div class="event" data-kind="${kind}">
+      <div class="event-icon icon-${kind}">${icons[kind]}</div>
+      <div class="event-body">
+        <div class="event-top">
+          <div class="event-type type-${kind}">${labels[kind]}</div>
+          <div class="event-time">${date ? relTime(date) : ''}</div>
+        </div>
+        <div class="event-amount">
+          ${val}
+          <span class="token-sym">${sym}</span>
+        </div>
+        <div class="event-meta">
+          <div class="addr-chip"><span>${chipLabel}</span>${shortAddr(counterparty)}</div>
+          ${logo ? `<div class="token-badge"><img src="${logo}" onerror="this.style.display='none'">${sym}</div>` : ''}
+          ${hash ? `<a class="tx-link" href="${BASESCAN}${hash}" target="_blank">↗ Basescan</a>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Update stats ──────────────────────────────────────────────────────────────
+function updateStats(events) {
+  let usdcPaid = 0, wethIn = 0;
+  events.forEach(tx => {
+    const sym = tx.tokenInfo?.symbol || '';
+    const dec = tx.tokenInfo?.decimals || 18;
+    const val = parseFloat(tx.value) / Math.pow(10, dec);
+    if (tx._kind === 'payout' && sym === 'USDC') usdcPaid += val;
+    if ((tx._kind === 'receive' || tx._kind === 'fee') && sym === 'WETH') wethIn += val;
+  });
+  document.getElementById('stat-total').textContent = events.length;
+  document.getElementById('stat-payouts').textContent = '$' + usdcPaid.toLocaleString(undefined, {maximumFractionDigits:0});
+  document.getElementById('stat-fees').textContent = wethIn.toFixed(4) + ' Ξ';
+  document.getElementById('stat-refresh').textContent = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+
+// ── Render feed ───────────────────────────────────────────────────────────────
+function renderFeed() {
+  const feed = document.getElementById('feed');
+  const filtered = currentFilter === 'all'
+    ? allEvents
+    : allEvents.filter(tx => tx._kind === currentFilter);
+
+  if (!filtered.length) {
+    feed.innerHTML = '<div class="loader"><p>No events found.</p></div>';
+    return;
+  }
+  feed.innerHTML = filtered.map(renderEvent).join('');
+}
+
+// ── Fetch data ────────────────────────────────────────────────────────────────
+async function fetchData() {
+  try {
+    const res = await fetch(`${API}/transfers/?limit=100`);
+    const data = await res.json();
+    const transfers = data.results || [];
+
+    // classify each
+    allEvents = transfers
+      .filter(tx => tx.executionDate || tx.submissionDate)
+      .map(tx => ({ ...tx, _kind: classify(tx) }));
+
+    updateStats(allEvents);
+    renderFeed();
+  } catch (e) {
+    document.getElementById('feed').innerHTML =
+      `<div class="loader"><p>Error loading data: ${e.message}</p></div>`;
+  }
+}
+
+// ── Filter buttons ────────────────────────────────────────────────────────────
+document.querySelectorAll('.filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = btn.dataset.filter;
+    renderFeed();
+  });
+});
+
+// ── Init + auto-refresh ───────────────────────────────────────────────────────
+fetchData();
+setInterval(fetchData, 30000);
+</script>
+</body>
+</html>
